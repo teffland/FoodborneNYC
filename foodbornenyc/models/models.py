@@ -21,6 +21,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from metadata import metadata
+from foodbornenyc.models import locations, businesses, documents, download_history
 from foodbornenyc.db_settings import database_config as config
 
 from foodbornenyc.util.util import get_logger
