@@ -27,7 +27,7 @@ from foodbornenyc.db_settings import database_config as config
 from foodbornenyc.util.util import get_logger
 logger = get_logger(__name__)
 
-def get_db_engine(echo=False, verbose=False):
+def get_db_engine(config=config, echo=False, verbose=False):
     """Take the database settings and construct an engine for the database
 
     Args:
@@ -85,7 +85,7 @@ def get_db_session(echo=False, autoflush=True, autocommit=False):
                         autoflush=autoflush,
                         autocommit=autocommit)()
 
-def setup_db():
+def setup_db(config=config):
     """Set up all tables in the database, or add tables that don't yet exist.
 
     Reflects all tables that have been registered with the `metadata` object in the `models` module.
@@ -96,7 +96,7 @@ def setup_db():
     Returns:
         None
     """
-    engine = get_db_engine(echo=True)
+    engine = get_db_engine(config, echo=True)
     #instantiate the schema
     try:
         metadata.create_all(engine)
