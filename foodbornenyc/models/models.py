@@ -31,11 +31,13 @@ def get_db_engine(config=config, echo=False, verbose=False):
     """Take the database settings and construct an engine for the database
 
     Args:
+        config (dict of str: str): DB connection configuration; any blank setting
+            defaults to db_settings.py settings
         echo (bool): If `True` SQLAlchemy will print all SQL statements to stdout
         verbose (bool): If `True` the logger will notify when the engine is created
 
     Returns:
-        engine: The SQLAlchemy engine object.  Used to executre statements or create ORM sessions
+        engine: The SQLAlchemy engine object.  Used to execute statements or create ORM sessions
     """
     user = config['user']
     password = config['password']
@@ -53,7 +55,7 @@ def get_db_engine(config=config, echo=False, verbose=False):
 
     return engine
 
-def get_db_session(echo=False, autoflush=True, autocommit=False):
+def get_db_session(config=config, echo=False, autoflush=True, autocommit=False):
     """Create a SQLAlchemy `Session` bound to the engine defined in `get_db_engine`
 
     Args:
@@ -81,7 +83,7 @@ def get_db_session(echo=False, autoflush=True, autocommit=False):
             # you can't not commit using the `with` context
         ```
     """
-    return sessionmaker(bind=get_db_engine(echo=echo),
+    return sessionmaker(bind=get_db_engine(config=config, echo=echo),
                         autoflush=autoflush,
                         autocommit=autocommit)()
 
@@ -105,7 +107,7 @@ def setup_db(config=config):
         logger.error("Failed to instantieate Database with model schema")
         traceback.print_exc()
 
-def drop_all_tables():
+def drop_all_tables(config=config):
     """Tear down all data, tables, and the schema.  Very dangerous.
 
     Args:
@@ -114,7 +116,7 @@ def drop_all_tables():
     Returns:
         None
     """
-    engine = get_db_engine(echo=True)
+    engine = get_db_engine(config, echo=True)
     try:
         metadata.reflect(engine, extend_existing=True)
         metadata.drop_all(engine)
