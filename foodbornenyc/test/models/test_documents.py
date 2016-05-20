@@ -2,11 +2,11 @@ import pytest
 from mock import Mock, patch
 
 import json
-import foodbornenyc.sources.twitter_search as twitter_search
 from foodbornenyc.models.businesses import Business
 from foodbornenyc.models.locations import Location
 from foodbornenyc.models.documents \
     import Document, DocumentAssoc, Tweet, YelpReview
+from foodbornenyc.models.users import TwitterUser
 from foodbornenyc.test.test_db import clear_tables, get_db_session
 
 @pytest.fixture(scope="function")
@@ -51,9 +51,8 @@ def testYelpReview(db):
 def testTweet(db):
     """ Tweet construction should work, including creating documents """
     sample = { 'id_str':'2', 'text':"I hate food!",
-               'in_reply_to_user_id_str': '233', 'lang': 'en',
-               'in_reply_to_status_id_str': '449' }
-    sample_optional = { 'user': {'id_str': '234'},
+               'in_reply_to': Tweet("Food.", "29"), 'lang': 'en' }
+    sample_optional = { 'user': TwitterUser(234),
                         'location': Location(line1='11 Main St', city='Boston'),
                         'created_at': 'Tue Feb 23 23:40:54 +0000 2015' }
 
@@ -64,25 +63,23 @@ def testTweet(db):
     db.commit()
 
     # test immediate fields
-    tweet = db.query(Tweet).first()
-    assert tweet.id == sample['id_str']
+    tweet = db.query(Tweet).get(sample['id_str'])
     assert tweet.user_id == None
     assert tweet.created_at == None
     assert tweet.location == None
     assert tweet.text == sample['text']
-    assert tweet.in_reply_to_user_id_str == sample['in_reply_to_user_id_str']
+    assert tweet.in_reply_to == sample['in_reply_to']
     assert tweet.lang == sample['lang']
-    assert tweet.in_reply_to_status_id_str == \
-        sample['in_reply_to_status_id_str']
 
     # test optinal fields
     db.delete(tweet)
+    db.commit()
     db.add(Tweet(**sample2))
     db.commit()
 
-    tweet = db.query(Tweet).first()
+    tweet = db.query(Tweet).get(sample2['id_str'])
     assert tweet.location == sample2['location']
-    assert tweet.user_id == sample2['user']['id_str']
+    assert tweet.user.id == sample2['user'].id
 
     # test document
     assert tweet.document_rel.assoc_id == sample['id_str']
