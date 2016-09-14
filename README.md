@@ -90,6 +90,7 @@ This install guide is currently just intended for Mac OSX in the Terminal. Note 
     * When we are ready to productionalize a version of the dev branch, it'll get merged with master
 
 - I highly suggest using [git-flow](http://danielkummer.github.io/git-flow-cheatsheet/) to make using this workflow super convenient
+    - (When initializing git-flow, we use all the defaults so just hit enter abunch of times)
 - We'll use TravisCI for continuous integration on pull requests.  This saves us a lot of work. See [this](http://stackoverflow.com/questions/32422264/jenkins-vs-travis-ci) for an explanation
 - Write your unit tests with `pytests`
 - Use `pylint` for some helpful automated code review
