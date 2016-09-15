@@ -2,6 +2,8 @@
 
 ![Build Status](https://travis-ci.org/teffland/FoodborneNYC.svg?branch=master)
 
+TODO (teffland) - update these docs after refactoring is complete
+
 The new implementation of a system to mine social media documents for evidence of foodborne illness outbreaks in NYC restaurants.
 
 This software will be used by the NYC Department of Health and Mental Hygiene (DOHMH) to inform their practices.
