@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="../js/angular.min.js"></script>
+
+    <script src="../js/app.js"></script>
+    <script src="../js/data.js"></script>
+  </head>
+
+  <body ng-app='haystackUI'>
+    <p>Yoo</p>
+    <div ng-controller='dataController as data'>
+      <input type="checkbox" ng-click='data.toggleSort()'>Toggle Sort Order</input>
+      <ol>
+        <li ng-repeat="business in data.businesses | orderBy:data.sortStatement">
+          <h3>{{business.name}}</h3>
+          <p>Rating: {{business.rating | number }}
+            <br>
+            Number of Reviews: {{business.reviews.length}}
+          </p>
+        </li>
+      </ol>
+      <p>{{data.data[0].name}}</p>
+    </div>
+
+  </body>
+</html>
