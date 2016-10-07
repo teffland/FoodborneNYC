@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- CSS Libraries -->
+    <link rel="stylesheet" type="text/css" href="../css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="../css/bootstrap-theme.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" type="text/css" href="../css/styles.css">
+
+    <!-- Angular Libraries -->
+    <script src="../js/lib/angular.min.js"></script>
+    <script src="../js/lib/angular-route.min.js"></script>
+    <script src="../js/lib/angular-animate.min.js"></script>
+    <script src="../js/lib/ui-bootstrap-tpls-2.1.4.js"></script>
+
+    <!-- App JS -->
+    <script src="../js/app.js"></script>
+    <script src="../js/directives.js"></script>
+    <script src="../js/controllers.js"></script>
+    <script src="../js/data.js"></script>
+    <script src='../js/navbar.js'></script>
+
+  </head>
+
+  <body ng-app='haystack-ui'>
+    <div ng-include="'navbar.html'"></div>
+    <div ng-controller='PagingController as pager'>
+      <div class='container' ng-controller='dataController as data'>
+        <div class='row'>
+          <div class="col-md-8 col-md-offset-1">
+            <span>Page Size: <input type="number" placeholder="pager.pageSize" min="10" ng-model="pager.pageSize"></input> {{pager.pageSize}}</span>
+            <ul uib-pagination force-ellipses=True rotate=True max-size=10
+                total-items="data.documents.length / pager.pageSize"
+                ng-model="pager.currentPage" ng-change="pager.pageChanged()"></ul>
+          </div>
+        </div>
+        <div class='row'>
+          <div class="col-md-8 col-md-offset-1">
+            <document ng-repeat="doc in data.documents | limitTo: pager.pageSize: pager.pageSize * pager.currentPage"></document>
+            <!-- <ul uib-pagination total-items="{{data.documents.length / pageSize" ng-model="currentPage" ng-change="pageChanged()"></ul> -->
+          </div>
+        </div>
+      </div>
+    <!-- </div> -->
+
+  </body>
+</html>

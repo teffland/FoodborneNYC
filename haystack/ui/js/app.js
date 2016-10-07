@@ -1,1 +1,1 @@
-var app = angular.module('haystackUI', []);
+var app = angular.module('haystack-ui', ['ui.bootstrap', 'ngRoute']);
