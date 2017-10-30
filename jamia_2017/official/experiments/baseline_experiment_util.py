@@ -108,6 +108,11 @@ def setup_baseline_data(train_regime='gold',
         def split(df, date):
             return (df[df.date < date], df[df.date >= date])
         
+        def sample(dataset, sample_size, random_state):
+            sample_size = min(sample_size, len(dataset))
+            assert isinstance(dataset, pd.DataFrame), "need a pd.DataFrame object to sample"
+            return dataset.sample(sample_size, random_state=random_state)
+        
         biased = pd.read_excel(osp.join(data_path, 'Tom_Twitter_7_27_17.xls'))
         unbiased = pd.read_excel(osp.join(data_path, 'twitter_no_label_9_19_17.xlsx'))
         biased_csv = validate(rename(normalize(biased)))
@@ -119,14 +124,14 @@ def setup_baseline_data(train_regime='gold',
         (old_unbiased, new_unbiased) = split(unbiased_csv, test_split_date)
 
         if train_regime == 'silver':
-            pass
+            old_unbiased = sample(old_unbiased, silver_size, random_state=random_seed)
         elif train_regime == 'biased':
             old_unbiased = pd.DataFrame(columns=old_unbiased.columns)
         else:
             raise ValueError, train_regime + " train regime not supported for " + dataset
 
         if test_regime == 'silver':
-            pass
+            new_unbiased = sample(new_unbiased, silver_size, random_state=random_seed)
         elif test_regime == 'biased':
             new_unbiased = pd.DataFrame(columns=new_unbiased.columns)
         else:
