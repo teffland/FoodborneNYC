@@ -38,7 +38,7 @@ score_kwds = {
 
 print 'Starting Experiments...'
 t0 = time()
-experiments = random_search(model, random_hyperparams, 'best_svm_sick_silver.pkl', **score_kwds)
+experiments = random_search(model, random_hyperparams, '../data/best_models_twitter/best_svm_sick_silver.pkl', **score_kwds)
 print 'Done {}:{}:{} seconds. Writing out experiments'.format(*hms(time()-t0))
-joblib.dump(experiments, 'svm_sick_silver_dev.pkl')
+joblib.dump(experiments, '../data/dev_models_twitter/svm_sick_silver_dev.pkl')
 print 'All done'
