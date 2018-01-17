@@ -2,8 +2,10 @@
 import numpy as np
 import numpy.random as npr
 import pandas as pd
+import datetime as dt
 from datetime import datetime
 import os.path as osp
+from collections import defaultdict
 import itertools
 from pprint import pprint
 
@@ -15,66 +17,162 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from sklearn.externals import joblib
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def setup_baseline_data(train_regime='gold',
                         test_regime='gold',
                         data_path='../data',
+                        dataset='yelp',
                         random_seed=0,
                         silver_size=10000,
-                        test_split_date='1/1/2017'):
+                        test_split_date_str=None):
     """ Read in the cleaned data, split it up and format for evaluation. """
-    test_split_date = datetime.strptime(test_split_date, '%m/%d/%Y')
-    biased = pd.read_csv(osp.join(data_path, 'fixed_biased.csv'), encoding='utf8')
-    biased.date = pd.to_datetime(biased.date)
-    old_biased = biased[biased['date'] < test_split_date]
-    new_biased = biased[biased['date'] >= test_split_date]
 
-    unbiased = pd.read_csv(osp.join(data_path, 'fixed_unbiased.csv'), encoding='utf8')
-    unbiased.date = pd.to_datetime(unbiased.date)
-    all_B_over_U = len(biased) / float(len(unbiased) + len(biased))
 
-    if train_regime == 'gold':
-        old_unbiased = pd.read_excel(osp.join(data_path, 'historical_unbiased.xlsx'),
-                                     encoding='utf8')
-        old_unbiased.date = pd.to_datetime(old_unbiased.date)
-    elif train_regime == 'silver':
-        old_unbiased = unbiased[unbiased.date < test_split_date]
-        old_unbiased = old_unbiased.sample(silver_size, random_state=random_seed)
-        # assume the biased complement are negative examples
-        old_unbiased.loc[:,'is_foodborne'] = 'No'
-        old_unbiased.loc[:,'is_multiple'] = 'No'
-    elif train_regime == 'biased':
-        old_unbiased = pd.DataFrame(columns=old_biased.columns)
-    else:
-        raise ValueError, "Regime must be 'silver', 'gold', or 'biased'"
+    if dataset=='yelp' :
 
-    if test_regime == 'gold':
-        new_unbiased = pd.read_excel(osp.join(data_path, 'fixed_current_nonbiased.xlsx'),
-                                     encoding='utf8')
-        new_unbiased.date = pd.to_datetime(new_unbiased.date)
+        if(test_split_date_str is None):
+            test_split_date_str = '1/1/2017'
+        test_split_date = datetime.strptime(test_split_date_str, '%m/%d/%Y')
+        biased = pd.read_csv(osp.join(data_path, 'biased.csv'), encoding='utf8')
+        biased.date = pd.to_datetime(biased.date)
+        old_biased = biased.loc[biased['date'] < test_split_date]
+        new_biased = biased.loc[biased['date'] >= test_split_date]
 
-    elif test_regime == 'silver':
-        unbiased = pd.read_csv(osp.join(data_path, 'fixed_unbiased.csv'), encoding='utf8')
+        unbiased = pd.read_csv(osp.join(data_path, 'unbiased.csv'), encoding='utf8')
         unbiased.date = pd.to_datetime(unbiased.date)
-        new_unbiased = unbiased[unbiased.date >= test_split_date]
-        new_unbiased = new_unbiased.sample(silver_size, random_state=random_seed)
-        # assume the biased complement are negative examples
-        new_unbiased.loc[:,'is_foodborne'] = 'No'
-        new_unbiased.loc[:,'is_multiple'] = 'No'
-    elif test_regime == 'biased':
-        new_unbiased = pd.DataFrame(columns=new_biased.columns)
+        all_B_over_U = len(biased) / float(len(unbiased) + len(biased))
+
+        if train_regime == 'gold':
+            old_unbiased = pd.read_excel(osp.join(data_path, 'historical_unbiased.xlsx'),
+                                         encoding='utf8')
+            old_unbiased.date = pd.to_datetime(old_unbiased.date)
+        elif train_regime == 'silver':
+            old_unbiased = unbiased.loc[unbiased.date < test_split_date]
+            old_unbiased = old_unbiased.sample(silver_size, random_state=random_seed)
+            # assume the biased complement are negative examples
+            old_unbiased['is_foodborne'] = 'No'
+            old_unbiased['is_multiple'] = 'No'
+        elif train_regime == 'biased':
+            old_unbiased = pd.DataFrame(columns=old_biased.columns)
+        else:
+            raise ValueError("Train regime must be 'silver', 'gold', or 'biased', found: " + train_regime)
+
+        if test_regime == 'gold':
+            new_unbiased = pd.read_excel(osp.join(data_path, 'current_nonbiased.xlsx'),
+                                         encoding='utf8')
+            new_unbiased.date = pd.to_datetime(new_unbiased.date)
+
+        elif test_regime == 'silver':
+            unbiased = pd.read_csv(osp.join(data_path, 'unbiased.csv'), encoding='utf8')
+            unbiased.date = pd.to_datetime(unbiased.date)
+            new_unbiased = unbiased[unbiased.date >= test_split_date]
+            new_unbiased = new_unbiased.sample(silver_size, random_state=random_seed)
+            # assume the biased complement are negative examples
+            new_unbiased['is_foodborne'] = 'No'
+            new_unbiased['is_multiple'] = 'No'
+        elif test_regime == 'biased':
+            new_unbiased = pd.DataFrame(columns=new_biased.columns)
+        else:
+            raise ValueError("Test regime must be 'silver', 'gold', or 'biased', found: " + test_regime)
+
+        old_biased['is_foodborne'] = old_biased['is_foodborne'].map({'Yes':1, 'No':0})
+        old_unbiased['is_foodborne'] = old_unbiased['is_foodborne'].map({'Yes':1, 'No':0})
+        new_biased['is_foodborne'] = new_biased['is_foodborne'].map({'Yes':1, 'No':0})
+        new_unbiased['is_foodborne'] = new_unbiased['is_foodborne'].map({'Yes':1, 'No':0})
+
+        old_biased['is_multiple'] = old_biased['is_multiple'].map({'Yes':1, 'No':0})
+        old_unbiased['is_multiple'] = old_unbiased['is_multiple'].map({'Yes':1, 'No':0})
+        new_biased['is_multiple'] = new_biased['is_multiple'].map({'Yes':1, 'No':0})
+        new_unbiased['is_multiple'] = new_unbiased['is_multiple'].map({'Yes':1, 'No':0})
+
+    elif dataset=='twitter':
+        if(test_split_date_str is None):
+            test_split_date_str = '6/1/2017'
+        test_split_date = datetime.strptime(test_split_date_str, '%m/%d/%Y')
+
+        def normalize(df):
+            return df.groupby(['source_id']).aggregate(
+                {'label_someone_got_sick':'first',
+                 'text':'first',
+                 'created_date':'first'}).reset_index()
+
+        def rename(g, is_foodborne_map={'YES': 1, 'NO': 0}):
+            g = g.filter(['created_date', 'text', 'label_someone_got_sick']).rename(columns={
+            'label_someone_got_sick': 'is_foodborne',
+            'created_date': 'date'})
+            g.is_foodborne = g.is_foodborne.map(is_foodborne_map)
+            g.loc[:,'is_multiple'] = 1
+            return g
+
+        def validate(g):
+            return g[~g.is_foodborne.isnull()]
+        
+        def split(df, date):
+            return (df[df.date < date], df[df.date >= date])
+        
+        def sample(dataset, sample_size, random_state):
+            sample_size = min(sample_size, len(dataset))
+            assert isinstance(dataset, pd.DataFrame), "need a pd.DataFrame object to sample"
+            return dataset.sample(sample_size, random_state=random_state)
+
+        def minimalist_xldate_as_datetime(xldate):
+            # datemode: 0 for 1900-based, 1 for 1904-based
+            return (dt.datetime(1899, 12, 30) + dt.timedelta(days=xldate))
+
+        def filter_and_map_is_foodborne(df):
+            idx = (df.is_foodborne == 'No') | (df.is_foodborne == 'Yes')
+            df = df[idx]
+            df.is_foodborne = df.is_foodborne.map({'No': 0, 'Yes': 1})
+            return df
+
+        biased = pd.read_excel(osp.join(data_path, 'Tom_Twitter_7_27_17.xls'))
+        unbiased = pd.read_excel(osp.join(data_path, 'twitter_no_label_9_19_17.xlsx'))
+        biased_csv = validate(rename(normalize(biased)))
+        unbiased_csv = validate(rename(normalize(unbiased), is_foodborne_map=defaultdict(int)))
+
+        all_B_over_U = len(biased) / float(5952760)
+        # This is because the 'U' that we're using is actually only a sample from the DOHMH servers.
+        # For twitter, we hard code the 'U' used in calculating all_B_over_U to 5,952,760.
+
+        (old_biased, new_biased) = split(biased_csv, test_split_date)
+        (old_unbiased, new_unbiased) = split(unbiased_csv, test_split_date)
+
+        selected_cols = ['date','text','is_foodborne','is_multiple']
+        if train_regime == 'gold':
+            old_unbiased = pd.read_excel(osp.join(data_path, 'old_biased_complement_sampled_labled.xlsx'))
+            old_unbiased.date = map(minimalist_xldate_as_datetime, old_unbiased.date)
+            old_unbiased = old_unbiased.loc[:,selected_cols]
+            old_unbiased = filter_and_map_is_foodborne(old_unbiased)
+        elif train_regime == 'silver':
+            old_unbiased = sample(old_unbiased, silver_size, random_state=random_seed)
+        elif train_regime == 'biased':
+            old_unbiased = pd.DataFrame(columns=old_unbiased.columns)
+        else:
+            raise ValueError, train_regime + " train regime not supported for " + dataset
+
+        if test_regime == 'gold':
+            new_unbiased = pd.read_excel(osp.join(data_path, 'new_biased_complement_sampled_labeled.xlsx'))
+            new_unbiased.date = map(minimalist_xldate_as_datetime, new_unbiased.date)
+            new_unbiased = new_unbiased.loc[:,selected_cols]
+            new_unbiased = filter_and_map_is_foodborne(new_unbiased)
+        elif test_regime == 'silver':
+            new_unbiased = sample(new_unbiased, silver_size, random_state=random_seed)
+        elif test_regime == 'biased':
+            new_unbiased = pd.DataFrame(columns=new_unbiased.columns)
+        else:
+            raise ValueError, test_regime + " test regime not supported for " + dataset
+
     else:
-        raise ValueError, "Regime must be 'silver' or 'gold'"
+        raise ValueError, "dataset must be 'yelp' or 'twitter'"
 
-    old_biased.loc[:,'is_foodborne'] = old_biased['is_foodborne'].map({'Yes':1, 'No':0})
-    old_unbiased.loc[:,'is_foodborne'] = old_unbiased['is_foodborne'].map({'Yes':1, 'No':0})
-    new_biased.loc[:,'is_foodborne'] = new_biased['is_foodborne'].map({'Yes':1, 'No':0})
-    new_unbiased.loc[:,'is_foodborne'] = new_unbiased['is_foodborne'].map({'Yes':1, 'No':0})
-
-    old_biased.loc[:,'is_multiple'] = old_biased['is_multiple'].map({'Yes':1, 'No':0})
-    old_unbiased.loc[:,'is_multiple'] = old_unbiased['is_multiple'].map({'Yes':1, 'No':0})
-    new_biased.loc[:,'is_multiple'] = new_biased['is_multiple'].map({'Yes':1, 'No':0})
-    new_unbiased.loc[:,'is_multiple'] = new_unbiased['is_multiple'].map({'Yes':1, 'No':0})
-
+    logger.info('data setup with'
+                 ' len(train_data.text) = {}'
+                 ' len(test_data.text) = {}'
+                 ' all_B_over_U = {}'.format(len(old_biased) + len(old_unbiased), len(new_biased) + len(new_unbiased), all_B_over_U))
+        
     return {
         'train_data': {
             'text':old_biased['text'].tolist() + old_unbiased['text'].tolist(),
@@ -245,9 +343,7 @@ def bootstrap_f1_ci(trues, preds, is_biased, importance_weights, random_seed=Non
 def bootstrap_aupr_ci(trues, preds, is_biased, importance_weights, random_seed=None, **bootstrap_kwds):
     """ Get bootstrap confidence intervals around IW-AUPR score. """
     def scorer(trues, preds, importance_weights):
-        #plt.hist(preds, bins=100, alpha=.25)
         ps, rs, ts = importance_weighted_pr_curve(trues, preds, importance_weights, n_thresholds=50)
-        #plt.plot(rs, ps, alpha=.5)
         return area_under_pr_curve(ps, rs)
     return iw_bootstrap_score_ci(trues, preds, is_biased, importance_weights, scorer,
                               random_seed=random_seed,
@@ -531,3 +627,15 @@ def pr_curves(model_list, title_list, main_title, label_key,
     if save_fname:
         plt.savefig(save_fname+'_pr_curves.pdf')
     return fig, ax
+
+def test():
+    logging.basicConfig(level = logging.DEBUG)
+    for dataset in ('yelp', 'twitter'):
+        for regime in ('gold', 'silver', 'biased'):
+            setup_baseline_data(train_regime=regime, test_regime=regime, dataset=dataset,
+                                data_path='data/{}_data/'.format(dataset),
+                                random_seed=0, silver_size=1000, test_split_date_str=None)
+
+
+if __name__ == '__main__':
+    test()
