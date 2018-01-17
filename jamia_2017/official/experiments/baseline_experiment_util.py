@@ -26,7 +26,7 @@ def setup_baseline_data(train_regime='gold',
                         data_path='../data',
                         dataset='yelp',
                         random_seed=0,
-                        silver_size=10000,
+                        silver_size=1000,
                         test_split_date_str=None):
     """ Read in the cleaned data, split it up and format for evaluation. """
 
