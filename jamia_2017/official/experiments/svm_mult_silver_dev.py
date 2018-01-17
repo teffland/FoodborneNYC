@@ -11,7 +11,7 @@ from util import hms
 random_seed = 0
 
 print 'Getting data...',
-data = setup_baseline_data(train_regime='silver', test_regime='silver', random_seed=random_seed)
+data = setup_baseline_data(dataset='twitter', data_path='../twitter_data/', train_regime='silver', test_regime='silver', random_seed=random_seed)
 train_data = data['train_data']
 all_B_over_U = data['all_B_over_U']
 print 'Done'
